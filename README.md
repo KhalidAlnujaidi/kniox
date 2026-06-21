@@ -9,9 +9,7 @@
 
 ## V1.0.1 is out, now kniox ships with <a href="https://github.com/rtk-ai/rtk">rtk</a> baked in 🚀
 
-rtk filters and compresses command outputs before they reach your LLM context. Single Rust binary, 100+ supported commands, <10ms overhead.
-
-## Token Savings (30-min Claude Code Session)
+# Token Savings (30-min Claude Code Session)
 
 | Operation | Frequency | Standard | rtk | Savings |
 |-----------|-----------|----------|-----|---------|
