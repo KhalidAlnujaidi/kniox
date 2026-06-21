@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang=en>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>NEOX</title>
+<style>
+  :root { font-family: system-ui, sans-serif; }
+  body { margin: 0; background: #0d1117; color: #e6edf3; }
+  header { padding: 12px 20px; display: flex; gap: 16px; align-items: baseline;
+           border-bottom: 1px solid #21262d; }
+  h1 { font-size: 16px; margin: 0; letter-spacing: .1em; }
+  .slot { color: #7d8590; font-size: 13px; }
+  .stale { color: #f85149; }
+  main { padding: 16px 20px; display: grid; gap: 18px;
+         grid-template-columns: 1fr; max-width: 1100px; }
+  .strip { display: flex; flex-wrap: wrap; gap: 14px; }
+  .meter { flex: 1 1 200px; background: #161b22; border: 1px solid #21262d;
+           border-radius: 8px; padding: 10px 12px; }
+  .meter b { font-size: 13px; color: #7d8590; font-weight: 500; }
+  .bar { height: 8px; border-radius: 4px; background: #21262d; margin-top: 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: #3fb950; }
+  .bar > i.hot { background: #f85149; }
+  .val { font-size: 18px; margin-top: 4px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
+       color: #7d8590; margin: 0 0 8px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0;
+         border-bottom: 1px solid #161b22; font-size: 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .on { background: #3fb950; } .off { background: #6e7681; }
+  .grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); }
+  a.card { background: #161b22; border: 1px solid #21262d; border-radius: 8px;
+           padding: 12px; text-decoration: none; color: inherit; }
+  a.card:hover { border-color: #3fb950; }
+  .muted { color: #7d8590; font-size: 12px; }
+</style>
+<header>
+  <h1>NEOX</h1>
+  <span class=slot id=slot>—</span>
+  <span class=slot style=margin-left:auto id=ts>connecting…</span>
+</header>
+<main>
+  <section><h2>Resources</h2><div class=strip id=strip></div></section>
+  <section><h2>Services · 24/7</h2><div id=services></div></section>
+  <section><h2>Projects</h2><div class=grid id=projects></div></section>
+</main>
+<script>
+const fmt = v => v == null ? "—" : v;
+function meter(label, used, total, hot) {
+  const pct = (used != null && total) ? Math.min(100, used / total * 100) : 0;
+  return `<div class=meter><b>${label}</b>
+    <div class=val>${fmt(used)}${total!=null?` / ${total}`:""}</div>
+    <div class=bar><i class="${hot?'hot':''}" style="width:${pct}%"></i></div></div>`;
+}
+async function tick() {
+  let s;
+  try { s = await (await fetch("/api/state")).json(); }
+  catch { const t = document.getElementById("ts");
+          t.className = "slot stale"; t.textContent = "daemon unreachable — showing last data"; return; }
+  if (s.error) { document.getElementById("ts").textContent = "error: " + s.error; return; }
+  const g = s.resources.gpu, r = s.resources.ram;
+  document.getElementById("slot").textContent = s.resources.slot || "";
+  const ts = document.getElementById("ts");
+  ts.className = "slot"; ts.textContent = "updated " + (s.ts || "");
+  const gpuHot = g.used_gb != null && g.budget_gb && g.used_gb > g.budget_gb;
+  document.getElementById("strip").innerHTML =
+    meter(`GPU (util ${fmt(g.util_pct)}%${g.lease_holder?` · ${g.lease_holder}`:""})`,
+          g.used_gb, g.budget_gb, gpuHot) +
+    meter("CPU %", s.resources.cpu_pct, 100, false) +
+    meter("RAM (GB)", r.used_gb, r.total_gb, false);
+  document.getElementById("services").innerHTML = s.services.length
+    ? s.services.map(x => `<div class=row><span><i class="dot ${x.running?'on':'off'}"></i>${x.name}</span><span class=muted>${x.draw}</span></div>`).join("")
+    : "<div class=muted>no long-running services</div>";
+  document.getElementById("projects").innerHTML = s.projects.length
+    ? s.projects.map(p => `<a class=card href="/project/${p.name}">
+        <div><i class="dot ${p.status==='running'?'on':'off'}"></i>${p.name}</div>
+        <div class=muted>${fmt(p.status)} · ${p.last_run?p.last_run.task:'no runs'}</div></a>`).join("")
+    : "<div class=muted>no registered projects</div>";
+  if (s.notes && s.notes.length) ts.textContent += " · " + s.notes.join("; ");
+}
+tick(); setInterval(tick, 3000);
+</script>
+</html>

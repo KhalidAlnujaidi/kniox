@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# kx — kniox launcher + shell verbs. Run it from ANYWHERE; it anchors to ~/kniox.
+#   ln -s ~/kniox/kx ~/.local/bin/kx
+#
+#   kx                 from anywhere -> ~/kniox ; inside a kniox project -> that project
+#   kx <project>       launch inside projects/<project>
+#   kx new <name>      scaffold + register a project, then launch it
+#   kx setup [--fleet] detect hardware + backend, write manifest/config (headless)
+#   kx status | audit  one-shot status / alignment audit (headless)
+#   kx doctor          health-check the rails (claude, hooks, daemon, backend) — headless
+#   kx dash            serve the consolidated dashboard (http://enigma:8765)
+#   kx "do the thing"  launch (anchored) with an opening prompt
+#
+# Anchoring ("Layer -1"): if your cwd is already inside the kniox tree, kx respects
+# it (a project subdir keeps its context). From anywhere else, kx drops you into
+# ~/kniox. The PreToolUse hooks gate everything, so --dangerously-skip-permissions
+# is added whenever the launch dir is inside kniox.
+set -euo pipefail
+KNIOX="$(cd "${KNIOX_HOME:-$HOME/kniox}" 2>/dev/null && pwd -P)" \
+  || { echo "kx: kniox not found at ${KNIOX_HOME:-$HOME/kniox} (set KNIOX_HOME)" >&2; exit 1; }
+ALIGN="$KNIOX/alignment/PROJECT-ALIGNMENT-REQUIREMENT.md"
+
+_under_kniox() { case "$(cd "$1" 2>/dev/null && pwd -P)/" in "$KNIOX"/*) return 0;; *) return 1;; esac; }
+_project_of() { local d; d="$(cd "$1" 2>/dev/null && pwd -P)" || return 0
+  case "$d" in "$KNIOX"/projects/*) local r="${d#"$KNIOX"/projects/}"; echo "${r%%/*}";; esac; }
+_current_slot() { local h; h=$(date +%H)
+  if   (( 10#$h >= 23 || 10#$h < 6 )); then echo "nightly (gemma4:31b batch, text-only)"
+  elif (( 10#$h >= 18 ));              then echo "render (gemma4:e4b + qwen-image, sequential)"
+  else                                     echo "daytime (interactive; one model, fast unload)"; fi; }
+
+# Where to launch: inside kniox -> stay put; anywhere else -> the kniox root.
+_anchor() { if _under_kniox "$(pwd)"; then pwd -P; else echo "$KNIOX"; fi; }
+
+_build_args() { ARGS=(); local dir="$1"
+  # The claude CLI rejects mixing --append-system-prompt with --append-system-prompt-file,
+  # so concatenate every piece (file contents inline + dynamic text) into ONE prompt.
+  local sp=""
+  _sp_add() { [[ -n "$1" ]] && { [[ -n "$sp" ]] && sp+=$'\n\n'; sp+="$1"; }; }
+  [[ -f "$ALIGN" ]] && _sp_add "$(<"$ALIGN")"
+  local proj; proj="$(_project_of "$dir")"
+  if [[ -n "$proj" ]]; then local nm="$KNIOX/projects/$proj/next.md"
+    if [[ -f "$nm" ]]; then _sp_add "$(<"$nm")"
+    else _sp_add "kniox: project '$proj' has no next.md — flag and scaffold before editing."; fi; fi
+  _sp_add "kniox compute slot right now: $(_current_slot). Respect the slot; dispatch heavy loads via the daemon."
+  _sp_add "Be terse: execution over explanation — short, plain, minimal output; verbosity is opt-in. All changes land via PR; never push to main."
+  [[ -n "$sp" ]] && ARGS+=(--append-system-prompt "$sp")
+  _under_kniox "$dir" && ARGS+=(--dangerously-skip-permissions); }
+
+_launch() { local dir="$1"; shift; _build_args "$dir"; ( cd "$dir" && exec claude "${ARGS[@]}" "$@" ); }
+
+# Headless health-check: is the enforcement layer actually up? (Fail-open hooks can
+# silently die on a schema change; this is how you find out before trusting them.)
+_doctor() {
+  local rc=0
+  echo "kniox doctor — $KNIOX"
+  _chk() { if eval "$2" >/dev/null 2>&1; then echo "  ok   $1"; else echo "  FAIL $1"; rc=1; fi; }
+  _chk "claude on PATH"               'command -v claude'
+  _chk "alignment contract present"   "test -f \"$ALIGN\""
+  _chk "settings.json present"        "test -f \"$KNIOX/.claude/settings.json\""
+  local h
+  for h in guard-uv.py guard-state.py session-end-append.py subagent-align.sh; do
+    _chk "hook executable: $h"        "test -x \"$KNIOX/.claude/hooks/$h\""
+  done
+  for h in cap-nextmd.py; do
+    _chk "hook executable: $h"        "test -x \"$KNIOX/.claude/hooks/$h\""
+  done
+  _chk "daemon imports"               "python \"$KNIOX/daemon/daemon.py\" --help"
+  if [[ -f "$KNIOX/daemon/state/manifest.json" ]]; then echo "  ok   capability manifest present"
+  else echo "  WARN no manifest — run 'kx setup' so the broker reads real hardware, not guesses"; fi
+  # Backend is detected, not assumed: report whatever the manifest/config say is up.
+  python "$KNIOX/daemon/daemon.py" vram >/dev/null 2>&1 \
+    && echo "  ·    backend: $(python "$KNIOX/daemon/daemon.py" vram 2>/dev/null | python -c 'import sys,json;d=json.load(sys.stdin);print(d.get("backend"),"| vram used:",d.get("used_gb"),"budget:",d.get("budget_gb"))' 2>/dev/null)" \
+    || echo "  ·    backend: unknown (daemon vram unavailable)"
+  [[ "${KNIOX_BYPASS_HOOKS:-}" == "1" ]] && echo "  WARN KNIOX_BYPASS_HOOKS=1 — guard hooks are DISABLED in this shell"
+  echo "  ·    compute slot: $(_current_slot)"
+  echo "  ·    run '/doctor' inside a claude session to confirm hooks actually fire on this version"
+  return $rc
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  new) name="${2:?usage: kx new <name>}"
+    "$KNIOX/.claude/skills/new-project/scaffold.sh" "$name"
+    python "$KNIOX/daemon/daemon.py" register "$name" "$KNIOX/projects/$name" >/dev/null 2>&1 || true
+    _launch "$KNIOX/projects/$name" ;;
+  setup)  shift; ( cd "$KNIOX" && exec python "$KNIOX/daemon/setup.py" "$@" ) ;;
+  status) _launch "$(_anchor)" -p "Use the status skill: projects, VRAM headroom, current slot." ;;
+  audit)  _launch "$KNIOX" -p "Use the alignment-auditor agent on every project under projects/." ;;
+  doctor) _doctor; exit $? ;;
+  dash)   exec python "$KNIOX/dashboard/server.py" ;;
+  "")     _launch "$(_anchor)" ;;
+  *) if [[ -d "$KNIOX/projects/$cmd" ]]; then shift; _launch "$KNIOX/projects/$cmd" "$@"
+     else _launch "$(_anchor)" "$@"; fi ;;
+esac

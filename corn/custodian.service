@@ -1,0 +1,14 @@
+[Unit]
+Description=kniox custodian — idle-GPU framework overseer
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/kniox
+ExecStart=/usr/bin/env uv run python %h/kniox/daemon/daemon.py custodian serve
+Restart=always
+RestartSec=30
+Nice=19
+
+[Install]
+WantedBy=default.target

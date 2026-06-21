@@ -1,0 +1,19 @@
+{
+  "permissions": { "deny": ["Read(./.env)", "Read(./**/.env)"] },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash",       "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-uv.py" },
+                                            { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-privacy.py" } ] },
+      { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-state.py" } ] }
+    ],
+    "Stop": [
+      { "hooks": [
+        { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end-append.py" },
+        { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/cap-nextmd.py" }
+      ] }
+    ],
+    "SubagentStart": [
+      { "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/subagent-align.sh" } ] }
+    ]
+  }
+}

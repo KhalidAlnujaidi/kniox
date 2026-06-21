@@ -1,0 +1,1 @@
+{ "mcpServers": { "kniox": { "command": "python", "args": ["daemon/mcp_server.py"] } } }

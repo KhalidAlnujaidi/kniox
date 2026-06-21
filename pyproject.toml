@@ -1,0 +1,13 @@
+[project]
+name = "kniox"
+version = "0.1.0"
+description = "kniox alignment framework + job broker"
+requires-python = ">=3.11"
+dependencies = ["mcp", "psutil"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["daemon", "dashboard"]
+testpaths = ["daemon/tests"]

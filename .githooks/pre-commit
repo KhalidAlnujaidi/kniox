@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# kniox privacy guard for MANUAL git commits (Claude Code commits are also caught by the
+# PreToolUse hook). Enable once per clone:  git config core.hooksPath .githooks
+exec python3 "$(git rev-parse --show-toplevel)/.claude/hooks/guard-privacy.py" --staged
