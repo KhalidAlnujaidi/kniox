@@ -35,6 +35,14 @@ finished — their scripts ship in [`reviewers/`](reviewers/).
     (`eval`, `base64`, `$IFS`), and stdin pipes (`curl … | uv run -`). Documented on purpose.
   - `guard-state.py` — protects the rails (`.claude/`, `kx`, `alignment/`, root `CLAUDE.md`, `.mcp.json`)
     from agent edits, and blocks edits inside a project with no `next.md`.
+  - `rtk-gate.py` — optional **encapsulated [rtk](https://github.com/rtk-ai/rtk)** integration. Runs in
+    the Bash matcher *after* the guards (so they stay authoritative: an exit-2 short-circuits the chain).
+    Delegates to `rtk rewrite` **only** for a narrow allow-list of high-output commands (bulk
+    install/build/sync); everything else — including decision-commands rtk *could* rewrite (`git status`,
+    `grep`, `diff`) — passes through **raw**. **Inert when `rtk` is not installed** (raw passthrough) and
+    never blocks. The selectivity is deliberate: it mitigates rtk's own
+    [#582](https://github.com/rtk-ai/rtk/issues/582), where indiscriminate output compression *inflates*
+    agent token use. kniox owns the policy; rtk is just a subprocess.
   - `session-end-append.py` (Stop) — appends a timestamp to the project's `logs/sessions.log`
     (out of prompt context).
   - `cap-nextmd.py` (Stop) — **hard-caps** the project's `next.md` (last ~60 lines / 6 KB).
