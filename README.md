@@ -7,7 +7,29 @@
 **[▶ Watch the walkthrough](https://khalidalnujaidi.github.io/kniox/)** ·
 [Install](#one-liner-install) · [Roadmap](ROADMAP.md) · [Contributing](#contributing--good-first-issues)
 
-[![kniox — a narrated walkthrough of the governance layers](docs/kniox-demo.gif)](https://khalidalnujaidi.github.io/kniox/)
+## V1.0.1 is out, now kniox ships with <a href="https://github.com/rtk-ai/rtk">rtk</a> baked in 🚀
+
+rtk filters and compresses command outputs before they reach your LLM context. Single Rust binary, 100+ supported commands, <10ms overhead.
+
+## Token Savings (30-min Claude Code Session)
+
+| Operation | Frequency | Standard | rtk | Savings |
+|-----------|-----------|----------|-----|---------|
+| `ls` / `tree` | 10x | 2,000 | 400 | -80% |
+| `cat` / `read` | 20x | 40,000 | 12,000 | -70% |
+| `grep` / `rg` | 8x | 16,000 | 3,200 | -80% |
+| `git status` | 10x | 3,000 | 600 | -80% |
+| `git diff` | 5x | 10,000 | 2,500 | -75% |
+| `git log` | 5x | 2,500 | 500 | -80% |
+| `git add/commit/push` | 8x | 1,600 | 120 | -92% |
+| `cargo test` / `npm test` | 5x | 25,000 | 2,500 | -90% |
+| `ruff check` | 3x | 3,000 | 600 | -80% |
+| `pytest` | 4x | 8,000 | 800 | -90% |
+| `go test` | 3x | 6,000 | 600 | -90% |
+| `docker ps` | 3x | 900 | 180 | -80% |
+| **Total** | | **~118,000** | **~23,900** | **-80%** |
+
+> Estimates based on medium-sized TypeScript/Rust projects. Actual savings vary by project size.
 
 A governance layer for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview).
 You run the agent through `kx` instead of `claude`; kniox wraps the session in fail-closed guards,
