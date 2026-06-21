@@ -7,13 +7,31 @@ Governs all projects under `projects/`. Any directory initialized or moved here
 becomes a native Kniox Project, managed by the daemon and bound by these rules.
 
 ## Privacy — personal projects stay private (hard rule)
-This framework repo is **public**. A personal project's name, idea, domain, or any
-identifying specific MUST NEVER appear in tracked files, commit messages, PR titles, or
-PR bodies here. Project source lives only in the project's **own gitignored repo** under
-`projects/` (kniox ignores `projects/*` and `dashboard/*/`); per-project facts live in the
-local daemon registry, which the dashboard reads at runtime. Only **generic** framework
-enhancements are proposed as PRs. Enforced by `guard-privacy.py` (a PreToolUse hook and a
-git pre-commit hook — enable the latter once per clone with `git config core.hooksPath .githooks`).
+
+### Two repositories
+- **`KhalidAlnujaidi/kniox` — PUBLIC.** A curated, clean mirror of generic framework
+  functionality only. Zero personal secrets, projects, names, or ideas.
+- **`KhalidAlnujaidi/kniox-private` — PRIVATE.** The working repo (`~/kniox` points here).
+  The default location for **everything**.
+
+### Rules
+1. **Default to private.** All development, project source, project progress, registrations,
+   specs, experiments, logs, and anything personal lives **only** in the private repo (or each
+   project's own gitignored repo under `projects/`; kniox ignores `projects/*` and `dashboard/*/`).
+2. **While developing, nothing reaches the public repo** — no direct push to any branch, ever.
+3. **The only thing that reaches the public repo is a generic framework enhancement or tweak to
+   system functionality, and only as a pull request** — never a push, never project content,
+   never a personal name, idea, secret, or key.
+4. **One test before anything touches public:** *"Is this a generic framework improvement with
+   zero personal or project content?"* If not certain, it stays private.
+5. The public repo is already verified clean — **do not re-audit it** unless you change what it
+   publishes.
+
+A personal project's name, idea, domain, or any identifying specific MUST NEVER appear in
+tracked files, commit messages, PR titles, or PR bodies that reach the public mirror.
+Per-project facts live in the local daemon registry, which the dashboard reads at runtime.
+Enforced by `guard-privacy.py` (a PreToolUse hook and a git pre-commit hook — enable the latter
+once per clone with `git config core.hooksPath .githooks`).
 
 ## Core principle
 Specialized models per task — never general-purpose models multitasking. Best
