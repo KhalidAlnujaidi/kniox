@@ -58,7 +58,7 @@ _doctor() {
   _chk "alignment contract present"   "test -f \"$ALIGN\""
   _chk "settings.json present"        "test -f \"$KNIOX/.claude/settings.json\""
   local h
-  for h in guard-uv.py guard-state.py session-end-append.py subagent-align.sh; do
+  for h in guard-uv.py rtk-gate.py guard-state.py session-end-append.py subagent-align.sh; do
     _chk "hook executable: $h"        "test -x \"$KNIOX/.claude/hooks/$h\""
   done
   for h in cap-nextmd.py; do
@@ -71,6 +71,10 @@ _doctor() {
   python "$KNIOX/daemon/daemon.py" vram >/dev/null 2>&1 \
     && echo "  ·    backend: $(python "$KNIOX/daemon/daemon.py" vram 2>/dev/null | python -c 'import sys,json;d=json.load(sys.stdin);print(d.get("backend"),"| vram used:",d.get("used_gb"),"budget:",d.get("budget_gb"))' 2>/dev/null)" \
     || echo "  ·    backend: unknown (daemon vram unavailable)"
+  # rtk gate (encapsulated, policy-owned). Inert when rtk is absent — safe either way.
+  command -v rtk >/dev/null 2>&1 \
+    && echo "  ·    rtk: $(rtk --version 2>/dev/null | head -1) — gate active (allow-listed high-output cmds only)" \
+    || echo "  ·    rtk: not installed — gate inert (raw passthrough)"
   [[ "${KNIOX_BYPASS_HOOKS:-}" == "1" ]] && echo "  WARN KNIOX_BYPASS_HOOKS=1 — guard hooks are DISABLED in this shell"
   echo "  ·    compute slot: $(_current_slot)"
   echo "  ·    run '/doctor' inside a claude session to confirm hooks actually fire on this version"
