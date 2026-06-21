@@ -18,13 +18,23 @@ This repo is **kniox**. You (Claude Code) operate inside it. Projects live under
 - **PR-only; never push to `main`.** Every change lands via a pull request. Never push or
   commit directly to `main` / the main repo; nothing merges without explicit approval. Each
   set of major edits gets its own branch → verify it works and breaks nothing → open a PR → stop.
-- **Personal projects never touch this repo.** kniox is a PUBLIC framework. A project's
-  name, idea, domain, or any identifying specifics MUST NOT appear in tracked files, commit
-  messages, PR titles, or PR bodies here. All project specifics live only in the project's
-  own gitignored repo under `projects/` plus the local daemon registry; the dashboard reads
-  projects dynamically at runtime. Only generic framework enhancements are proposed as PRs.
-  Enforced by `guard-privacy.py` (PreToolUse + git pre-commit) and the `projects/*`,
-  `dashboard/*/` gitignores.
+- **Personal projects never touch the public mirror.** The published `KhalidAlnujaidi/kniox`
+  repo is PUBLIC. A project's name, idea, domain, or any identifying specifics MUST NOT appear
+  in tracked files, commit messages, PR titles, or PR bodies that reach it. All project
+  specifics live only in the project's own gitignored repo under `projects/` plus the local
+  daemon registry; the dashboard reads projects dynamically at runtime. Enforced by
+  `guard-privacy.py` (PreToolUse + git pre-commit) and the `projects/*`, `dashboard/*/` gitignores.
+- **Public mirror vs. private working repo (where work lives).** Two repos exist:
+  `KhalidAlnujaidi/kniox` (PUBLIC — a curated, clean mirror of generic framework functionality)
+  and `KhalidAlnujaidi/kniox-private` (PRIVATE — the working repo that `~/kniox` points to; the
+  default for everything). While developing, push **nothing** to the public repo: all work,
+  project progress, registrations, specs, experiments, logs, and anything personal stay in the
+  private repo (or a project's own gitignored repo). The **only** thing that reaches the public
+  repo is a generic framework enhancement or tweak to system functionality, and **only as a
+  pull request** — never a direct push, never project content, never a secret or key. Before
+  anything touches public, ask: *"is this a generic framework improvement with zero personal or
+  project content?"* — if not certain, keep it private. The public repo is already verified
+  clean; don't re-audit it unless you change what it publishes.
 - **Terse by default — execution over explanation.** Spend tokens doing, not narrating.
   User-facing text is short, plain, minimal: the result and the next step, not a lecture.
   Recommend a tool by name; skip the essay. No framework/language detail unless asked.
