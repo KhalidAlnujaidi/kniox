@@ -9,7 +9,7 @@
 
 ## V1.0.1 is out, now kniox ships with <a href="https://github.com/rtk-ai/rtk">rtk</a> baked in 🚀
 
-# Token Savings (30-min Claude Code Session)
+### Token Savings (30-min Claude Code Session)
 
 | Operation | Frequency | Standard | rtk | Savings |
 |-----------|-----------|----------|-----|---------|
@@ -34,7 +34,7 @@ You run the agent through `kx` instead of `claude`; kniox wraps the session in f
 brokers local GPU memory, and detects your hardware instead of assuming it. Projects live under
 `projects/` and inherit one alignment contract.
 
-It is **defense-in-depth, not a sandbox.** The hooks are a strong speed bump on top of
+Kniox is **defense-in-depth, not a sandbox.** The hooks are a strong speed bump on top of
 `--dangerously-skip-permissions` — they block the common destructive paths and protect their own
 rails, but a determined agent or a shell-obfuscation trick can still get around a regex guard. If you
 need true isolation, run the whole thing in a container or VM. kniox is what makes skip-permissions
