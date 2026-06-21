@@ -12,6 +12,7 @@ set -euo pipefail
 # Overrides:
 #   KNIOX_HOME=~/somewhere      install location (default ~/kniox)
 #   KNIOX_REPO_URL=<git url>    install from a fork
+#   KNIOX_NO_RTK=1              skip installing the rtk binary (rtk-gate stays inert)
 
 KNIOX_HOME="${KNIOX_HOME:-$HOME/kniox}"
 REPO_URL="${KNIOX_REPO_URL:-https://github.com/KhalidAlnujaidi/kniox.git}"
@@ -72,6 +73,36 @@ if [ -d ".venv" ]; then say "venv present"; else say "creating venv..."; uv venv
 
 say "installing daemon dependencies..."
 uv pip install -r daemon/requirements.txt
+
+# --- rtk: detect, install if missing (activates the narrow rtk-gate by default) ---
+# .claude/hooks/rtk-gate.py is INERT without the rtk binary. We install it so the gate
+# is live by default. The gate stays narrow regardless: it delegates to `rtk rewrite`
+# ONLY for an allow-list of bulk install/build/sync commands and passes everything else
+# through raw. Do NOT widen that allow-list — narrowness is what mitigates rtk #582
+# (indiscriminate compression inflates agent token use). Install is best-effort and
+# fail-open: if it fails, the gate stays inert and kniox is unaffected.
+ensure_rtk() {
+  if [ -n "${KNIOX_NO_RTK:-}" ]; then
+    say "KNIOX_NO_RTK set — skipping rtk (rtk-gate stays inert)"; return 0
+  fi
+  if command -v rtk >/dev/null 2>&1; then
+    say "rtk found: $(rtk --version 2>/dev/null || echo ok) — rtk-gate active"; return 0
+  fi
+  say "rtk not found — installing (activates the narrow rtk-gate)..."
+  if command -v brew >/dev/null 2>&1; then
+    brew install rtk >/dev/null 2>&1 || true
+  fi
+  if ! command -v rtk >/dev/null 2>&1; then
+    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh || true
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"   # rtk installer targets ~/.local/bin
+  fi
+  if command -v rtk >/dev/null 2>&1; then
+    say "rtk installed — rtk-gate active (allow-list only)"
+  else
+    warn "rtk install skipped/failed — rtk-gate stays inert (raw passthrough). kniox is unaffected."
+  fi
+}
+ensure_rtk
 
 # --- executable bits ---
 say "setting permissions..."

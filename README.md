@@ -7,34 +7,14 @@
 **[▶ Watch the walkthrough](https://khalidalnujaidi.github.io/kniox/)** ·
 [Install](#one-liner-install) · [Roadmap](ROADMAP.md) · [Contributing](#contributing--good-first-issues)
 
-## V1.0.1 is out, now kniox ships with <a href="https://github.com/rtk-ai/rtk">rtk</a> baked in 🚀
-
-### Token Savings (30-min Claude Code Session)
-
-| Operation | Frequency | Standard | rtk | Savings |
-|-----------|-----------|----------|-----|---------|
-| `ls` / `tree` | 10x | 2,000 | 400 | -80% |
-| `cat` / `read` | 20x | 40,000 | 12,000 | -70% |
-| `grep` / `rg` | 8x | 16,000 | 3,200 | -80% |
-| `git status` | 10x | 3,000 | 600 | -80% |
-| `git diff` | 5x | 10,000 | 2,500 | -75% |
-| `git log` | 5x | 2,500 | 500 | -80% |
-| `git add/commit/push` | 8x | 1,600 | 120 | -92% |
-| `cargo test` / `npm test` | 5x | 25,000 | 2,500 | -90% |
-| `ruff check` | 3x | 3,000 | 600 | -80% |
-| `pytest` | 4x | 8,000 | 800 | -90% |
-| `go test` | 3x | 6,000 | 600 | -90% |
-| `docker ps` | 3x | 900 | 180 | -80% |
-| **Total** | | **~118,000** | **~23,900** | **-80%** |
-
-> Estimates based on medium-sized TypeScript/Rust projects. Actual savings vary by project size.
+[![kniox — a narrated walkthrough of the governance layers](docs/kniox-demo.gif)](https://khalidalnujaidi.github.io/kniox/)
 
 A governance layer for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview).
 You run the agent through `kx` instead of `claude`; kniox wraps the session in fail-closed guards,
 brokers local GPU memory, and detects your hardware instead of assuming it. Projects live under
 `projects/` and inherit one alignment contract.
 
-Kniox is **defense-in-depth, not a sandbox.** The hooks are a strong speed bump on top of
+It is **defense-in-depth, not a sandbox.** The hooks are a strong speed bump on top of
 `--dangerously-skip-permissions` — they block the common destructive paths and protect their own
 rails, but a determined agent or a shell-obfuscation trick can still get around a regex guard. If you
 need true isolation, run the whole thing in a container or VM. kniox is what makes skip-permissions
@@ -55,14 +35,15 @@ finished — their scripts ship in [`reviewers/`](reviewers/).
     (`eval`, `base64`, `$IFS`), and stdin pipes (`curl … | uv run -`). Documented on purpose.
   - `guard-state.py` — protects the rails (`.claude/`, `kx`, `alignment/`, root `CLAUDE.md`, `.mcp.json`)
     from agent edits, and blocks edits inside a project with no `next.md`.
-  - `rtk-gate.py` — optional **encapsulated [rtk](https://github.com/rtk-ai/rtk)** integration. Runs in
-    the Bash matcher *after* the guards (so they stay authoritative: an exit-2 short-circuits the chain).
+  - `rtk-gate.py` — **encapsulated [rtk](https://github.com/rtk-ai/rtk)** integration, **active by
+    default** (`install.sh` installs the rtk binary; opt out with `KNIOX_NO_RTK=1`). Runs in the Bash
+    matcher *after* `guard-uv` (so the guard stays authoritative: its exit-2 short-circuits the chain).
     Delegates to `rtk rewrite` **only** for a narrow allow-list of high-output commands (bulk
     install/build/sync); everything else — including decision-commands rtk *could* rewrite (`git status`,
-    `grep`, `diff`) — passes through **raw**. **Inert when `rtk` is not installed** (raw passthrough) and
-    never blocks. The selectivity is deliberate: it mitigates rtk's own
-    [#582](https://github.com/rtk-ai/rtk/issues/582), where indiscriminate output compression *inflates*
-    agent token use. kniox owns the policy; rtk is just a subprocess.
+    `grep`, `diff`) — passes through **raw**. Still **inert when `rtk` is absent** (raw passthrough) and
+    never blocks, so it's safe even if the binary install is skipped. The selectivity is deliberate: it
+    mitigates rtk's own [#582](https://github.com/rtk-ai/rtk/issues/582), where indiscriminate output
+    compression *inflates* agent token use. kniox owns the policy; rtk is just a subprocess.
   - `session-end-append.py` (Stop) — appends a timestamp to the project's `logs/sessions.log`
     (out of prompt context).
   - `cap-nextmd.py` (Stop) — **hard-caps** the project's `next.md` (last ~60 lines / 6 KB).
