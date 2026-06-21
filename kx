@@ -46,7 +46,28 @@ _build_args() { ARGS=(); local dir="$1"
   [[ -n "$sp" ]] && ARGS+=(--append-system-prompt "$sp")
   _under_kniox "$dir" && ARGS+=(--dangerously-skip-permissions); }
 
-_launch() { local dir="$1"; shift; _build_args "$dir"; ( cd "$dir" && exec claude "${ARGS[@]}" "$@" ); }
+# Preflight: the rtk gate is the enforcement layer — a silently-dead hook is the
+# one failure that matters. Never launch under kniox without it going unnoticed:
+# a loud banner fires if the gate isn't actually wired. Warns, does not block.
+_preflight_gate() { local dir="$1"; _under_kniox "$dir" || return 0
+  local s="$KNIOX/.claude/settings.json" h="$KNIOX/.claude/hooks/rtk-gate.py" warn=""
+  [[ "${KNIOX_BYPASS_HOOKS:-}" == "1" ]] && warn+="  KNIOX_BYPASS_HOOKS=1 — ALL guard hooks disabled in this shell\n"
+  grep -q "rtk-gate.py" "$s" 2>/dev/null || warn+="  rtk-gate not registered in .claude/settings.json\n"
+  [[ -x "$h" ]] || warn+="  hook missing or not executable: $h\n"
+  if [[ "${KNIOX_NO_RTK:-}" != "1" ]]; then
+    command -v rtk >/dev/null 2>&1 || warn+="  rtk not on PATH — gate is inert (no enforcement); install rtk or set KNIOX_NO_RTK=1 to silence\n"
+  fi
+  [[ -z "$warn" ]] && return 0
+  local r="" n=""; [[ -t 2 ]] && { r=$'\e[1;31m'; n=$'\e[0m'; }
+  { printf '%s' "$r"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║  ⚠  KNIOX GATE NOT ACTIVE — launching UNGUARDED               ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    printf '%s' "$n"; printf '%b' "$warn"
+    echo "  → fix with 'kx doctor', then relaunch."
+  } >&2; }
+
+_launch() { local dir="$1"; shift; _preflight_gate "$dir"; _build_args "$dir"; ( cd "$dir" && exec claude "${ARGS[@]}" "$@" ); }
 
 # Headless health-check: is the enforcement layer actually up? (Fail-open hooks can
 # silently die on a schema change; this is how you find out before trusting them.)
